@@ -1,0 +1,148 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<title></title>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="viewport" content="width=device-width, minimum-scale=1.0, , maximum-scale=1.0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+   
+    <link type="text/css" rel="stylesheet" href="./css/example.css" />
+
+    <link type="text/css" rel="stylesheet" href="./css/contextmenu.css" />
+
+    <SCRIPT src="./js/shifty.js"></SCRIPT>
+    <SCRIPT src="./js/raphael.js"></SCRIPT>
+    <SCRIPT src="./js/jquery-1.12.0.min.js"></SCRIPT>
+    <SCRIPT src="./js/jquery.autoresize.js"></SCRIPT>
+    <SCRIPT src="./js/jquery-touch_punch.js"></SCRIPT>
+    <SCRIPT src="./js/jquery.contextmenu.js"></SCRIPT>
+    <SCRIPT src="./js/rgbcolor.js"></SCRIPT>
+    <SCRIPT src="./js/StackBlur.js"></SCRIPT>
+    <SCRIPT src="./js/canvg.js"></SCRIPT>
+    <SCRIPT src="./js/Class.js"></SCRIPT>
+    <SCRIPT src="./js/json2.js"></SCRIPT>
+    <SCRIPT src="./js/pathfinding-browser.min.js"></SCRIPT>
+
+    <SCRIPT src="./js/draw2d.js"></SCRIPT>
+
+    <SCRIPT src="./js/LabelRectangle.js"></SCRIPT>
+    
+<script type="text/javascript">
+    
+$(window).load(function () {
+
+     // create the paint area. The id in the constructor must be
+     // an existing DIV 
+    var canvas = new draw2d.Canvas("gfx_holder");
+
+     // create and add two Node which contains Ports (In and OUT)
+    var rect = new LabelRectangle({
+        width:100, 
+        height:80,
+        userData: {
+            moveKeyStatus: false
+        }, 
+        onMouseEnter: function () {
+            canvas.setCurrentSelection(this.select(true));
+        }, 
+        onMouseLeave: function () {
+            if (!this.getUserData().moveKeyStatus) {
+                this.unselect();
+                canvas.setCurrentSelection(null);
+            }
+        }
+    });
+
+    var currentMousePosition = {
+        x: 0,
+        y: 0
+    };
+
+    var kp = new draw2d.policy.canvas.KeyboardPolicy({
+        onKeyDown: function (canvas, keycode, shiftKey, ctrlKey) {
+            var selection = canvas.getSelection();
+            if (selection == null)
+                return;
+
+            var selectedRect = selection.getPrimary();
+            if (selectedRect == null)
+                return;
+            console.log(keycode);
+
+            if (keycode === 68) {
+                selectedRect.setUserData({
+                    moveKeyStatus: true,
+                    mouseOffset: {
+                        x: selectedRect.getPosition().getX() - currentMousePosition.x,
+                        y: selectedRect.getPosition().getY() - currentMousePosition.y
+                    }
+                });
+            } else if (keycode === 84) {
+                selectedRect.setUserData({
+                    moveKeyStatus: false
+                });
+                var children = selectedRect.getChildren();
+                var child = null;
+
+                if (children != null && children != undefined && children.data.length > 0)
+                    child = children.data[0];
+                else {
+                    child = selectedRect;
+                }
+                console.log(child);
+
+                if (child == null)
+                    return;
+
+                var labelInplaceEditor = new draw2d.ui.LabelInplaceEditor();
+                labelInplaceEditor.start(child);
+            } else if (keycode === 27) {
+                selectedRect.setUserData({
+                    moveKeyStatus: false
+                });
+            }
+        }, 
+        onMouseMove: function (canvas, x, y, shiftKey, ctrlKey) {
+            currentMousePosition.x = x;
+            currentMousePosition.y = y;
+            var selection = canvas.getSelection();
+            if (selection == null)
+                return;
+
+            var selectedRect = selection.getPrimary();
+            if (selectedRect == null)
+                return;
+
+            var selectedRectMoveKeyStatus = selectedRect.getUserData().moveKeyStatus;
+            if (selectedRectMoveKeyStatus) {
+                selectedRect.setPosition(x + selectedRect.getUserData().mouseOffset.x, y + selectedRect.getUserData().mouseOffset.y);
+            }
+        }
+    });
+
+    canvas.uninstallEditPolicy(new draw2d.policy.canvas.DefaultKeyboardPolicy());
+    canvas.installEditPolicy(kp);
+    
+    canvas.add( rect, 150, 200);
+
+    ///////////////////////////////////////////////////////////////////// 
+    // JUST ADD SOME DOCU ELEMENTS ON THE SCREEN
+    ///////////////////////////////////////////////////////////////////// 
+
+    var msg = new draw2d.shape.note.PostIt({text:"DoubleClick on the label to edit the text."});
+    canvas.add(msg, 20,20);
+
+    $("body").scrollTop(0)
+          .scrollLeft(0);
+});
+
+</script>
+
+</head>
+
+<body>
+   <div  onselectstart="javascript:/*IE8 hack*/return false" id="gfx_holder" style="width:1500px; height:1500px; ">
+ 
+   </div>
+
+</body>
+</html>
