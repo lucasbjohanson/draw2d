@@ -20,15 +20,6 @@ var LabelRectangle= draw2d.shape.basic.Rectangle.extend({
         fontColor:"#0d0d0d",
         userData: {
             moveKeyStatus: false
-        },  
-        onMouseEnter: function () {
-          var canvas = this.getCanvas();
-          canvas.setCurrentSelection(this.select(true));
-        }, 
-        onMouseLeave: function () {
-          var canvas = this.getCanvas();
-          this.unselect();
-          canvas.setCurrentSelection(null);
         }
       });
       
@@ -39,4 +30,32 @@ var LabelRectangle= draw2d.shape.basic.Rectangle.extend({
       //this.label.installEditor(new draw2d.ui.LabelInplaceEditor());
 
     }
+});
+
+var RubberConnection = draw2d.Connection.extend({
+  init: function (attr, setter, getter) {
+    this._super($.extend({
+      color: "#33691e",
+      stroke: 1,
+      outlineStroke: 0,
+      outlineColor: null
+    }, attr),
+    setter,
+    getter);
+
+    this.setRouter(new draw2d.layout.connection.RubberbandRouter());
+  }, 
+  repaint: function (attributes) {
+    if (this.repaintBlocked === true || this.shape === null) {
+      return;      
+    }
+
+    attributes = attributes || {};
+
+    if (typeof attributes.fill === "undefined") {
+      attributes.fill = "aed581";
+    }
+
+    this._super(attributes);
+  }
 });
