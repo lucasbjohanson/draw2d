@@ -4,7 +4,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="viewport" content="width=device-width, minimum-scale=1.0, , maximum-scale=1.0" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-   
+
+    <link type="text/css" rel="stylesheet" href="./css/bootstrap.min.css" />   
+
     <link type="text/css" rel="stylesheet" href="./css/example.css" />
 
     <link type="text/css" rel="stylesheet" href="./css/contextmenu.css" />
@@ -15,6 +17,7 @@
     <SCRIPT src="./js/jquery.autoresize.js"></SCRIPT>
     <SCRIPT src="./js/jquery-touch_punch.js"></SCRIPT>
     <SCRIPT src="./js/jquery.contextmenu.js"></SCRIPT>
+    <SCRIPT src="./js/bootstrap.min.js"></SCRIPT>
     <SCRIPT src="./js/rgbcolor.js"></SCRIPT>
     <SCRIPT src="./js/StackBlur.js"></SCRIPT>
     <SCRIPT src="./js/canvg.js"></SCRIPT>
@@ -26,14 +29,37 @@
 
     <SCRIPT src="./js/LabelRectangle.js"></SCRIPT>
 
+    <SCRIPT src="./js/custom.js"></SCRIPT>
     <SCRIPT src="./js/main.js"></SCRIPT>
 
 </head>
 
 <body>
-   <div  onselectstart="javascript:/*IE8 hack*/return false" id="gfx_holder" style="width:1500px; height:1500px; ">
+   <div onselectstart="javascript:/*IE8 hack*/return false" id="gfx_holder" style="width:1500px; height:1500px; ">
  
    </div>
 
+    <div id="selectType" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title">Select Type</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action" data-index="top">Activity</a>
+                        <a href="#" class="list-group-item list-group-item-action">Goal</a>
+                        <a href="#" class="list-group-item list-group-item-action">Abstract</a>
+                        <a href="#" class="list-group-item list-group-item-action" data-index="bottom">Collection</a>
+                    </div>
+                </div>
+                <!-- <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary">Set</button>
+                </div> -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>

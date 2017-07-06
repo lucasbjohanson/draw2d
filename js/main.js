@@ -8,6 +8,7 @@ $(window).load(function () {
     var lineStartPoint = null;
     var currentKeyCode = 0;
     var f_keyDownFlag = 0;
+    var selectionMode = false;
 
     var originMovePointX = 0;
     var originMovePointY = 0;
@@ -15,75 +16,17 @@ $(window).load(function () {
     var keyPressPositionX = 0;
     var keyPressPositionY = 0;
 
-    var getDistance = function (startPoint, endPoint) {
-        return Math.pow((startPoint.x - endPoint.getX()), 2) + Math.pow((startPoint.y - endPoint.getY()), 2);
-    }
-
-    var getNearestPoint = function (mousePoint, points) {
-        var nearDistance = getDistance(mousePoint, points.data[0]), index = 0;
-
-        for (i = 1; i < points.data.length; i++) {
-            distance = getDistance(mousePoint, points.data[i]);
-            if (nearDistance > distance) {
-                nearDistance = distance;
-                index = i;
-            }
-        }
-        return index;
-    };
-
-    var createConnection = function (sourcePort, targetPort) {
-        return new RubberConnection({
-            source: sourcePort,
-            target: targetPort
-        });
-    };
-
-    var getSelectFigureOnCanvas = function (canvas) {
-        var overMouseFigureParent = null;
-        var overMouseFigure = canvas.getBestFigure(currentMousePosition.getX(), currentMousePosition.getY());
-
-        if (overMouseFigure != null)
-            overMouseFigureParent = overMouseFigure.getRoot();
-
-        if (overMouseFigureParent != null)
-            overMouseFigure = overMouseFigureParent;
-
-        return overMouseFigure;
-    };
-
-    var commonMouseEnter = function () {
-    };
-
-    var commonMouseLeave = function () {
-    };
+    var labelInplaceEditor = new draw2d.ui.LabelInplaceEditor();
 
     var dragPolicy = new draw2d.policy.connection.DragConnectionCreatePolicy({
         createConnection: createConnection
     })
 
-    var createRectangle = function (canvas, x, y) {
-        var rect = new LabelRectangle({
-            width:100, 
-            height:80,
-            userData: {
-                moveKeyStatus: false,
-                linkKeyStatus: false
-            }, 
-            onMouseEnter: commonMouseEnter, 
-            onMouseLeave: commonMouseLeave
-        });
-        rect.createPort("hybrid", new draw2d.layout.locator.LeftLocator(rect));
-        rect.createPort("hybrid", new draw2d.layout.locator.RightLocator(rect));
-        rect.createPort("hybrid", new draw2d.layout.locator.TopLocator(rect));
-        rect.createPort("hybrid", new draw2d.layout.locator.BottomLocator(rect));
-
-        canvas.add( rect, x, y);
-
-        return rect;
-    }
+    var boundingBoxSelection = new draw2d.policy.canvas.BoundingboxSelectionPolicy();
 
     var rect = createRectangle(canvas, 150, 200);
+    var diamond = createDiamond(canvas, 350, 200);
+    var circle = createCircle(canvas, 150, 400);
 
     var currentMousePosition = new draw2d.geo.Point(0, 0);
 
@@ -91,21 +34,21 @@ $(window).load(function () {
         onKeyDown: function (canvas, keycode, shiftKey, ctrlKey) {
             currentKeyCode = keycode;
 
-            var selectedRect = getSelectFigureOnCanvas(canvas);
+            keyPressPositionX = currentMousePosition.getX();
+            keyPressPositionY = currentMousePosition.getY();
+
+            var selectedRect = getSelectFigureOnCanvas(canvas, currentMousePosition.getX(), currentMousePosition.getY());
 
             if (keycode === 68) {
-                if (selectedRect == null)
+                var selectedFigures = getAllSelectedFigures(canvas);
+
+                if (selectedFigures == null)
                     return;
 
                 // D key pressed
-                selectedRect.setUserData({
-                    moveKeyStatus: true,
-                    linkKeyStatus: false,
-                    mouseOffset: {
-                        x: currentMousePosition.getX() - selectedRect.getPosition().getX(),
-                        y: currentMousePosition.getY() - selectedRect.getPosition().getY()
-                    }
-                });
+                boundingBoxSelection.onMouseDown(canvas, currentMousePosition.getX(), currentMousePosition.getY(), false, false);
+            } else if (keycode == 69) {
+
             } else if (keycode === 70) {
                 // F key pressed
                 if (f_keyDownFlag == 1)
@@ -114,14 +57,12 @@ $(window).load(function () {
                 canvas.setCurrentSelection(null);
 
                 if (selectedRect != null) {
-                    selectedRect.setUserData({
-                        moveKeyStatus: false,
-                        linkKeyStatus: true,
-                        mouseOffset: {
-                            x: currentMousePosition.getX() - selectedRect.getPosition().getX(),
-                            y: currentMousePosition.getY() - selectedRect.getPosition().getY()
-                        }
-                    });
+                    var objectData = selectedRect.getUserData();
+                    objectData.moveKeyStatus = false;
+                    objectData.linkKeyStatus = true;
+                    objectData.mouseOffset.x = currentMousePosition.getX() - selectedRect.getPosition().getX();
+                    objectData.mouseOffset.y = currentMousePosition.getY() - selectedRect.getPosition().getY();
+                    selectedRect.setUserData(objectData);
 
                     var sourcePorts = selectedRect.getOutputPorts();
                     var pointIndex = getNearestPoint(selectedRect.getUserData().mouseOffset, sourcePorts);
@@ -140,16 +81,22 @@ $(window).load(function () {
                 dragPolicy.onMouseDown(canvas, lineStartPoint.getAbsolutePosition().getX(), lineStartPoint.getAbsolutePosition().getY(), false, false);
 
                 f_keyDownFlag = 1;
-                keyPressPositionX = currentMousePosition.getX();
-                keyPressPositionY = currentMousePosition.getY();
+            } else if (keycode === 83) {
+                // S key pressed
+                selectionMode = true;
+
+                if (selectedRect == null) {
+                    sKeyDownAction(canvas, currentMousePosition.getX(), currentMousePosition.getY());
+                }
             } else if (keycode === 84) {
                 if (selectedRect == null)
                     return;
 
                 // T key pressed
-                selectedRect.setUserData({
-                    moveKeyStatus: false
-                });
+                var objectData = selectedRect.getUserData();
+                objectData.moveKeyStatus = false;
+                selectedRect.setUserData(objectData);
+
                 var children = selectedRect.getChildren();
                 var child = null;
 
@@ -164,29 +111,39 @@ $(window).load(function () {
 
                 var labelInplaceEditor = new draw2d.ui.LabelInplaceEditor();
                 labelInplaceEditor.start(child);
+
+                labelInplaceEditor.commit = function () {
+                    this.html.unbind("blur",this.commitCallback);
+                    $("body").unbind("click",this.commitCallback);
+                    var label = this.html.val();
+                    var cmd =new draw2d.command.CommandAttr(this.label, {text:label});
+                    this.label.getCanvas().getCommandStack().execute(cmd);
+                    this.html.fadeOut($.proxy(function(){
+                        this.html.remove();
+                        this.html = null;
+                        this.listener.onCommit(this.label.getText());
+                    },this));
+
+                    var labelWidth = this.label.getWidth() + 100;
+                    selectedRect.setWidth(labelWidth);
+                };
             } else if (keycode === 27) {
                 if (selectedRect == null)
                     return;
 
                 // ESC key pressed
-                selectedRect.setUserData({
-                    moveKeyStatus: false
-                });
+                var objectData = selectedRect.getUserData();
+                objectData.moveKeyStatus = false;
+                objectData.linkKeyStatus = false;
+                selectedRect.setUserData(objectData);
+            } else if (keycode === 13) {
+                
             }
         }, 
         onKeyUp: function (canvas, keycode, shiftKey, ctrlKey) {
             currentKeyCode = 0;
 
-            if (keycode === 68) {
-                selectedRect = getSelectFigureOnCanvas(canvas);
-
-                if (selectedRect == null)
-                    return;
-
-                selectedRect.setUserData({
-                    moveKeyStatus: false
-                });
-            } else if (keycode === 66) {
+            if (keycode === 66) {
                 var newRect = createRectangle(canvas, currentMousePosition.getX(), currentMousePosition.getY());
 
                 var children = newRect.getChildren();
@@ -201,8 +158,29 @@ $(window).load(function () {
                 if (child == null)
                     return;
 
-                var labelInplaceEditor = new draw2d.ui.LabelInplaceEditor();
                 labelInplaceEditor.start(child);
+            } else if (keycode === 68) {
+                boundingBoxSelection.onMouseUp(canvas, currentMousePosition.getX(), currentMousePosition.getY(), shiftKey, ctrlKey);
+            } else if (keycode == 69) {
+                selectedRect = getSelectFigureOnCanvas(canvas, currentMousePosition.getX(), currentMousePosition.getY());
+
+                if (selectedRect == null)
+                    return;
+                
+                var currentSelection  = canvas.getSelection();
+
+                if (currentSelection != null) {
+                    var prevSelectedRect = currentSelection.getPrimary();
+
+                    if (prevSelectedRect != null) {
+                        prevSelectedRect.unselect();
+                        canvas.setCurrentSelection(null);
+                    }
+                }
+
+                canvas.setCurrentSelection(selectedRect.select(true));
+
+                $('#selectType').modal();
             } else if (keycode === 70) {
                 currentDrawingConnection = null;
 
@@ -226,23 +204,43 @@ $(window).load(function () {
 
                 lineStartPoint = null;
                 f_keyDownFlag = 0;
+            } else if (keycode === 81) {
+                // Q key up
+                removeSelectedFigures(canvas);
+
+            } else if (keycode === 83) {
+                // S key up
+
+                if (selectionMode === false){
+                    return;
+                }
+
+                sKeyUpAction(canvas, currentMousePosition.getX(), currentMousePosition.getY());
+
+                selectionMode = false;
             }
+
+            originMovePointX = 0;
+            originMovePointY = 0;
+
+            keyPressPositionX = 0;
+            keyPressPositionY = 0;
         },
         onMouseMove: function (canvas, x, y, shiftKey, ctrlKey) {
             currentMousePosition.setX(x);
             currentMousePosition.setY(y);
 
             if (currentKeyCode == 68) {
-                var selectedRect = getSelectFigureOnCanvas(canvas);
-
-                if (selectedRect == null)
+                if (getSelectedFigure(canvas) == null)
                     return;
 
-                var selectedRectMoveKeyStatus = selectedRect.getUserData().moveKeyStatus;
+                var diffX1 = x - keyPressPositionX;
+                var diffY1 = y - keyPressPositionY;
 
-                if (selectedRectMoveKeyStatus) {
-                    selectedRect.setPosition(x - selectedRect.getUserData().mouseOffset.x, y - selectedRect.getUserData().mouseOffset.y);
-                }
+                boundingBoxSelection.onMouseDrag(canvas, diffX1, diffY1, diffX1 - originMovePointX, diffY1 - originMovePointY, shiftKey, ctrlKey);
+
+                originMovePointX = diffX1;
+                originMovePointY = diffY1;
             } else if (currentKeyCode == 70) {
                 var diffX1 = x - keyPressPositionX;
                 var diffY1 = y - keyPressPositionY;
@@ -252,6 +250,22 @@ $(window).load(function () {
 
                 originMovePointX = diffX1;
                 originMovePointY = diffY1;
+            } else if (currentKeyCode === 83) {
+                var figureOverMouse = getSelectFigureOnCanvas(canvas, currentMousePosition.getX(), currentMousePosition.getY());
+
+                if (figureOverMouse == null)
+                    return;
+
+                var objectData = figureOverMouse.getUserData();
+
+                if (objectData.seleted) {
+                    objectData.seleted = false;
+                    figureOverMouse.unselect();
+                } else {
+                    objectData.seleted = true;
+                    figureOverMouse.select(true);
+                }
+                figureOverMouse.setUserData(objectData);
             }
         }
     });
@@ -259,7 +273,89 @@ $(window).load(function () {
     canvas.uninstallEditPolicy(new draw2d.policy.canvas.DefaultKeyboardPolicy());
     canvas.installEditPolicy(kp);
     canvas.installEditPolicy(dragPolicy);
+    canvas.installEditPolicy(boundingBoxSelection);
 
     $("body").scrollTop(0)
           .scrollLeft(0);
+
+    $('#selectType').on('keyup', function (e) {
+        var selectedRect = getSelectedFigure(canvas);
+        
+        if (e.keyCode == 38) {
+            if ($('.list-group-item.active').attr('data-index') !== 'top')
+                $('.list-group-item.active').removeClass('active').prev().addClass('active');
+        } else if (e.keyCode == 40) {
+            if ($('.list-group-item.active').attr('data-index') !== 'bottom')
+                $('.list-group-item.active').removeClass('active').next().addClass('active');
+        } else if (e.keyCode == 13) {
+
+            if (selectedRect == null) {
+                $('#selectType').modal('hide');
+                return;
+            }
+
+            var type = $('.list-group-item.active').text();
+            var objectData = selectedRect.getUserData();
+            objectData.objectType.type = type;
+            selectedRect.setUserData(objectData);
+
+            $('#selectType').modal('hide');
+        }
+    });
+
+    $('#selectType').on('hide.bs.modal', function (e) {
+        var newFigure = null;
+        var selectedRect = getSelectedFigure(canvas);
+        var x = selectedRect.getPosition().getX();
+        var y = selectedRect.getPosition().getY();
+
+        selectedRect.unselect();
+        canvas.setCurrentSelection(null);
+
+        var type = $('.list-group-item.active').text();
+
+        var ports = selectedRect.getPorts();
+
+        canvas.remove(selectedRect);
+
+        if (type == 'Activity') {
+            newFigure = createRectangle(canvas, x, y, true);
+        } else if (type == 'Goal') {
+            newFigure = createCircle(canvas, x, y, true);
+        } else if (type == 'Abstract') {
+            newFigure = createDiamond(canvas, x, y, true);
+        } else {
+            newFigure = createRectangle(canvas, x, y, true);
+        }
+
+        newFigure.addPort(ports.data[0], new draw2d.layout.locator.LeftLocator(newFigure));
+        newFigure.addPort(ports.data[1], new draw2d.layout.locator.RightLocator(newFigure));
+        newFigure.addPort(ports.data[2], new draw2d.layout.locator.TopLocator(newFigure));
+        newFigure.addPort(ports.data[3], new draw2d.layout.locator.BottomLocator(newFigure));
+
+        newFigure.layoutPorts();
+    });
+
+    $('#selectType').on('show.bs.modal', function (e) {
+        var selectedRect = getSelectedFigure(canvas);
+
+        var type = selectedRect.getUserData().objectType.type;
+        
+        $('.list-group-item.active').removeClass('active');
+
+        if (type == 'default') {
+            $('.list-group-item:first').addClass('active');
+        } else {
+            $('.list-group-item').each(function (index, element) {
+                if ($(element).text() === type) {
+                    $(element).addClass('active');
+                }
+            });
+        }
+    });
+
+    $('.list-group-item').on('click', function () {
+        $('.list-group-item.active').removeClass('active');
+        $(this).addClass('active');
+    });
 });
