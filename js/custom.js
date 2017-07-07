@@ -240,6 +240,72 @@ var createCircle = function (canvas, x, y, ports = false) {
     return circle;
 }
 
+var createSvgRectangle = function (canvas, x, y, ports = false) {
+    var rect = new LabelSvgRectangle({
+        width:100, 
+        height:80,
+        keepAspectRatio: false,
+        userData: {
+            moveKeyStatus: false,
+            linkKeyStatus: false,
+            selected: false,
+            mouseOffset: {
+                x: 0,
+                y: 0
+            },
+            objectType: {
+                type: 'Activity'
+            }
+        }, 
+        onMouseEnter: commonMouseEnter, 
+        onMouseLeave: commonMouseLeave
+    });
+
+    if (!ports) {
+        rect.createPort("hybrid", new draw2d.layout.locator.LeftLocator(rect));
+        rect.createPort("hybrid", new draw2d.layout.locator.RightLocator(rect));
+        rect.createPort("hybrid", new draw2d.layout.locator.TopLocator(rect));
+        rect.createPort("hybrid", new draw2d.layout.locator.BottomLocator(rect));
+    }
+
+    canvas.add( rect, x, y);
+
+    return rect;
+}
+
+var createSvgPentacle = function (canvas, x, y, ports = false) {
+    var rect = new LabelSvgPentacle({
+        width:100, 
+        height:80,
+        keepAspectRatio: false,
+        userData: {
+            moveKeyStatus: false,
+            linkKeyStatus: false,
+            selected: false,
+            mouseOffset: {
+                x: 0,
+                y: 0
+            },
+            objectType: {
+                type: 'Activity'
+            }
+        }, 
+        onMouseEnter: commonMouseEnter, 
+        onMouseLeave: commonMouseLeave
+    });
+
+    if (!ports) {
+        rect.createPort("hybrid", new draw2d.layout.locator.LeftLocator(rect));
+        rect.createPort("hybrid", new draw2d.layout.locator.RightLocator(rect));
+        rect.createPort("hybrid", new draw2d.layout.locator.TopLocator(rect));
+        rect.createPort("hybrid", new draw2d.layout.locator.BottomLocator(rect));
+    }
+
+    canvas.add( rect, x, y);
+
+    return rect;
+}
+
 var labelInplaceEditorCommit = function (labelInplaceEditor, parent) {
 	labelInplaceEditor.commit = function () {
 	    this.html.unbind("blur",this.commitCallback);

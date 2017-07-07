@@ -27,6 +27,8 @@ $(window).load(function () {
     var rect = createRectangle(canvas, 150, 200);
     var diamond = createDiamond(canvas, 350, 200);
     var circle = createCircle(canvas, 150, 400);
+    var svgRect = createSvgRectangle(canvas, 150, 600);
+    var svgPentagle = createSvgPentacle(canvas, 650, 200);
 
     var currentMousePosition = new draw2d.geo.Point(0, 0);
 
