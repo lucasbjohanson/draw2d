@@ -9,12 +9,16 @@ $(window).load(function () {
     var currentKeyCode = 0;
     var f_keyDownFlag = 0;
     var selectionMode = false;
+    var actionDownKey = '';
 
     var originMovePointX = 0;
     var originMovePointY = 0;
 
     var keyPressPositionX = 0;
     var keyPressPositionY = 0;
+
+    var minX_ForMove = 0;
+    var minY_ForMove = 0;
 
     var labelInplaceEditor = new draw2d.ui.LabelInplaceEditor();
 
@@ -122,6 +126,9 @@ $(window).load(function () {
                 var labelInplaceEditor = new draw2d.ui.LabelInplaceEditor();
                 labelInplaceEditor.start(child);
                 labelInplaceEditorCommit(labelInplaceEditor, selectedRect);
+            } else if (keycode === 88) {
+                // X key pressed
+
             } else if (keycode === 27) {
                 if (selectedRect == null)
                     return;
@@ -231,6 +238,60 @@ $(window).load(function () {
                 sKeyUpAction(canvas, currentMousePosition.getX(), currentMousePosition.getY(), shiftKey, ctrlKey);
 
                 selectionMode = false;
+            } else if (keycode == 86) {
+                //V key up
+
+                if (actionDownKey == '')
+                    return;
+
+                if (actionDownKey == 'x') {
+                    var allFigures = getAllSelectedFigures(canvas);
+
+                    allFigures.each(function (i, figure) {
+                        figure.setAlpha(1);
+
+                        if (figure instanceof draw2d.Connection) {
+                            return;
+                        }
+
+                        var mouseOffsetX = currentMousePosition.getX() - minX_ForMove;
+                        var mouseOffsetY = currentMousePosition.getY() - minY_ForMove;
+
+                        var x = figure.getPosition().getX() + mouseOffsetX;
+                        var y = figure.getPosition().getY() + mouseOffsetY;
+
+                        figure.setPosition(x, y);
+                    });
+
+                    minX_ForMove = 0;
+                    minY_ForMove = 0
+                }
+
+                actionDownKey = '';
+
+            } else if (keycode === 88) {
+                // X key up
+
+                f_keyDownFlag = 0;
+                actionDownKey = 'x';
+                minX_ForMove = 0;
+                minY_ForMove = 0;
+
+                var allFigures = getAllSelectedFigures(canvas);
+
+                allFigures.each(function (i, figure) {
+                    figure.setAlpha(0.5);
+                    if (i == 0) {
+                        minX_ForMove = figure.getPosition().getX();
+                        minY_ForMove = figure.getPosition().getY();
+                    } else {
+                        if (minX_ForMove > figure.getPosition().getX())
+                            minX_ForMove = figure.getPosition().getX();
+
+                        if (minY_ForMove > figure.getPosition().getY())
+                            minY_ForMove = figure.getPosition().getY();
+                    }
+                });
             }
         },
         onMouseMove: function (canvas, x, y, shiftKey, ctrlKey) {
