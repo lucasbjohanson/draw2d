@@ -102,5 +102,48 @@ var RubberConnection = draw2d.Connection.extend({
     }
 
     this._super(attributes);
+  },
+  onMouseEnter: function () {
+    var canvas = this.getCanvas();
+    canvas.addSelection(this);
+  },
+  onMouseLeave: function () {
+    this.unselect();
   }
 });
+
+var ArrowConnection = draw2d.Connection.extend({
+  init: function (attr, setter, getter) {
+    this._super($.extend({
+      color: "#33691e",
+      stroke: 3,
+      outlineStroke: 2,
+      outlineColor: null
+    }, attr),
+    setter,
+    getter);
+
+    this.setRouter(new draw2d.layout.connection.ManhattanBridgedConnectionRouter());
+  }, 
+  repaint: function (attributes) {
+    if (this.repaintBlocked === true || this.shape === null) {
+      return;      
+    }
+
+    attributes = attributes || {};
+
+    // if (typeof attributes.fill === "undefined") {
+    //   attributes.fill = "aed581";
+    // }
+
+    this._super(attributes);
+  },
+  onMouseEnter: function () {
+    var canvas = this.getCanvas();
+    canvas.addSelection(this);
+  },
+  onMouseLeave: function () {
+    this.unselect();
+  }
+});
+

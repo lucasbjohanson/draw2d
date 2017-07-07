@@ -34,9 +34,6 @@ $(window).load(function () {
         onKeyDown: function (canvas, keycode, shiftKey, ctrlKey) {
             currentKeyCode = keycode;
 
-            keyPressPositionX = currentMousePosition.getX();
-            keyPressPositionY = currentMousePosition.getY();
-
             var selectedRect = getSelectFigureOnCanvas(canvas, currentMousePosition.getX(), currentMousePosition.getY());
 
             if (keycode === 68) {
@@ -46,8 +43,11 @@ $(window).load(function () {
                     return;
 
                 // D key pressed
-                boundingBoxSelection.onMouseDown(canvas, currentMousePosition.getX(), currentMousePosition.getY(), false, false);
-            } else if (keycode == 69) {
+                boundingBoxSelection.onMouseDown(canvas, currentMousePosition.getX(), currentMousePosition.getY(), shiftKey, ctrlKey);
+
+                keyPressPositionX = currentMousePosition.getX();
+                keyPressPositionY = currentMousePosition.getY();
+            } else if (keycode === 69) {
 
             } else if (keycode === 70) {
                 // F key pressed
@@ -56,7 +56,7 @@ $(window).load(function () {
 
                 canvas.setCurrentSelection(null);
 
-                if (selectedRect != null) {
+                if (selectedRect != null && !(selectedRect instanceof draw2d.Connection)) {
                     var objectData = selectedRect.getUserData();
                     objectData.moveKeyStatus = false;
                     objectData.linkKeyStatus = true;
@@ -78,16 +78,24 @@ $(window).load(function () {
                     lineStartPoint = bf;
                 }
 
-                dragPolicy.onMouseDown(canvas, lineStartPoint.getAbsolutePosition().getX(), lineStartPoint.getAbsolutePosition().getY(), false, false);
+                dragPolicy.onMouseDown(canvas, currentMousePosition.getX(), currentMousePosition.getY(), shiftKey, ctrlKey);
+
+                keyPressPositionX = currentMousePosition.getX();
+                keyPressPositionY = currentMousePosition.getY();
 
                 f_keyDownFlag = 1;
             } else if (keycode === 83) {
                 // S key pressed
                 selectionMode = true;
 
+                keyPressPositionX = currentMousePosition.getX();
+                keyPressPositionY = currentMousePosition.getY();
+
                 if (selectedRect == null) {
-                    sKeyDownAction(canvas, currentMousePosition.getX(), currentMousePosition.getY());
-                }
+                    sKeyDownAction(canvas, boundingBoxSelection, currentMousePosition.getX(), currentMousePosition.getY(), shiftKey, ctrlKey);
+                } else {
+                    selectionMode = false;
+                }   
             } else if (keycode === 84) {
                 if (selectedRect == null)
                     return;
@@ -111,22 +119,7 @@ $(window).load(function () {
 
                 var labelInplaceEditor = new draw2d.ui.LabelInplaceEditor();
                 labelInplaceEditor.start(child);
-
-                labelInplaceEditor.commit = function () {
-                    this.html.unbind("blur",this.commitCallback);
-                    $("body").unbind("click",this.commitCallback);
-                    var label = this.html.val();
-                    var cmd =new draw2d.command.CommandAttr(this.label, {text:label});
-                    this.label.getCanvas().getCommandStack().execute(cmd);
-                    this.html.fadeOut($.proxy(function(){
-                        this.html.remove();
-                        this.html = null;
-                        this.listener.onCommit(this.label.getText());
-                    },this));
-
-                    var labelWidth = this.label.getWidth() + 100;
-                    selectedRect.setWidth(labelWidth);
-                };
+                labelInplaceEditorCommit(labelInplaceEditor, selectedRect);
             } else if (keycode === 27) {
                 if (selectedRect == null)
                     return;
@@ -144,6 +137,7 @@ $(window).load(function () {
             currentKeyCode = 0;
 
             if (keycode === 66) {
+                // B key up
                 var newRect = createRectangle(canvas, currentMousePosition.getX(), currentMousePosition.getY());
 
                 var children = newRect.getChildren();
@@ -159,9 +153,13 @@ $(window).load(function () {
                     return;
 
                 labelInplaceEditor.start(child);
+                labelInplaceEditorCommit(labelInplaceEditor, newRect);
             } else if (keycode === 68) {
+                // D key up
                 boundingBoxSelection.onMouseUp(canvas, currentMousePosition.getX(), currentMousePosition.getY(), shiftKey, ctrlKey);
-            } else if (keycode == 69) {
+            } else if (keycode === 69) {
+                //E key up
+
                 selectedRect = getSelectFigureOnCanvas(canvas, currentMousePosition.getX(), currentMousePosition.getY());
 
                 if (selectedRect == null)
@@ -182,6 +180,8 @@ $(window).load(function () {
 
                 $('#selectType').modal();
             } else if (keycode === 70) {
+                //F key up
+
                 currentDrawingConnection = null;
 
                 if (lineStartPoint != null) {
@@ -195,6 +195,7 @@ $(window).load(function () {
                             if (lineStartPoint.getParent() != null && bf.getParent() != null) {
                                 if (lineStartPoint.getParent().getId() != bf.getParent().getId()) {
                                     var newLine = dragPolicy.createConnection(lineStartPoint, bf);
+                                    newLine.setTargetDecorator(new draw2d.decoration.connection.ArrowDecorator());
                                     canvas.add(newLine);
                                 }
                             }
@@ -212,61 +213,56 @@ $(window).load(function () {
                 // S key up
 
                 if (selectionMode === false){
+                    var selectFigure = getSelectFigureOnCanvas(canvas, currentMousePosition.getX(), currentMousePosition.getY());
+
+                    var currentSelection = canvas.getSelection();
+
+                    if (selectFigure.isSelected()) {
+                        selectFigure.unselect();
+                    } else {
+                        canvas.addSelection(selectFigure);
+                    }
+
                     return;
                 }
 
-                sKeyUpAction(canvas, currentMousePosition.getX(), currentMousePosition.getY());
+                sKeyUpAction(canvas, currentMousePosition.getX(), currentMousePosition.getY(), shiftKey, ctrlKey);
 
                 selectionMode = false;
             }
-
-            originMovePointX = 0;
-            originMovePointY = 0;
-
-            keyPressPositionX = 0;
-            keyPressPositionY = 0;
         },
         onMouseMove: function (canvas, x, y, shiftKey, ctrlKey) {
             currentMousePosition.setX(x);
             currentMousePosition.setY(y);
 
-            if (currentKeyCode == 68) {
+            var diffX1 = x - keyPressPositionX;
+            var diffY1 = y - keyPressPositionY;
+
+            if (currentKeyCode === 68) {
+                // D key drag
+
                 if (getSelectedFigure(canvas) == null)
                     return;
 
-                var diffX1 = x - keyPressPositionX;
-                var diffY1 = y - keyPressPositionY;
-
                 boundingBoxSelection.onMouseDrag(canvas, diffX1, diffY1, diffX1 - originMovePointX, diffY1 - originMovePointY, shiftKey, ctrlKey);
 
-                originMovePointX = diffX1;
-                originMovePointY = diffY1;
-            } else if (currentKeyCode == 70) {
-                var diffX1 = x - keyPressPositionX;
-                var diffY1 = y - keyPressPositionY;
+            } else if (currentKeyCode === 70) {
+                // F key drag
 
-                if (lineStartPoint != null)
-                    dragPolicy.onMouseDrag(canvas, diffX1, diffY1, diffX1 - originMovePointX, diffY1 - originMovePointY, false, false);
-
-                originMovePointX = diffX1;
-                originMovePointY = diffY1;
-            } else if (currentKeyCode === 83) {
-                var figureOverMouse = getSelectFigureOnCanvas(canvas, currentMousePosition.getX(), currentMousePosition.getY());
-
-                if (figureOverMouse == null)
-                    return;
-
-                var objectData = figureOverMouse.getUserData();
-
-                if (objectData.seleted) {
-                    objectData.seleted = false;
-                    figureOverMouse.unselect();
-                } else {
-                    objectData.seleted = true;
-                    figureOverMouse.select(true);
+                if (lineStartPoint != null) {
+                    dragPolicy.onMouseDrag(canvas, diffX1, diffY1, diffX1 - originMovePointX, diffY1 - originMovePointY, shiftKey, ctrlKey);
                 }
-                figureOverMouse.setUserData(objectData);
+                
+            } else if (currentKeyCode === 83) {
+                // S key pressed
+
+                
+            } else {
+                nowFigure = canvas.getBestFigure(x, y);
             }
+
+            originMovePointX = diffX1;
+            originMovePointY = diffY1;
         }
     });
 
@@ -279,8 +275,6 @@ $(window).load(function () {
           .scrollLeft(0);
 
     $('#selectType').on('keyup', function (e) {
-        var selectedRect = getSelectedFigure(canvas);
-        
         if (e.keyCode == 38) {
             if ($('.list-group-item.active').attr('data-index') !== 'top')
                 $('.list-group-item.active').removeClass('active').prev().addClass('active');
@@ -288,16 +282,7 @@ $(window).load(function () {
             if ($('.list-group-item.active').attr('data-index') !== 'bottom')
                 $('.list-group-item.active').removeClass('active').next().addClass('active');
         } else if (e.keyCode == 13) {
-
-            if (selectedRect == null) {
-                $('#selectType').modal('hide');
-                return;
-            }
-
-            var type = $('.list-group-item.active').text();
-            var objectData = selectedRect.getUserData();
-            objectData.objectType.type = type;
-            selectedRect.setUserData(objectData);
+            changeFigure(canvas);
 
             $('#selectType').modal('hide');
         }
@@ -311,6 +296,9 @@ $(window).load(function () {
 
         selectedRect.unselect();
         canvas.setCurrentSelection(null);
+        var title = getFirstChildText(selectedRect);
+        var width = selectedRect.getWidth();
+        var height = selectedRect.getHeight();
 
         var type = $('.list-group-item.active').text();
 
@@ -327,6 +315,10 @@ $(window).load(function () {
         } else {
             newFigure = createRectangle(canvas, x, y, true);
         }
+
+        setFirstChildText(newFigure, title);
+        newFigure.setHeight(height);
+        newFigure.setWidth(width);
 
         newFigure.addPort(ports.data[0], new draw2d.layout.locator.LeftLocator(newFigure));
         newFigure.addPort(ports.data[1], new draw2d.layout.locator.RightLocator(newFigure));
@@ -357,5 +349,9 @@ $(window).load(function () {
     $('.list-group-item').on('click', function () {
         $('.list-group-item.active').removeClass('active');
         $(this).addClass('active');
+
+        changeFigure(canvas);
+
+        $('#selectType').modal('hide');
     });
 });

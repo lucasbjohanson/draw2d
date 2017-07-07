@@ -5,7 +5,7 @@ var commonMouseLeave = function () {
 };
 
 var createConnection = function (sourcePort, targetPort) {
-    return new RubberConnection({
+    return new ArrowConnection({
         source: sourcePort,
         target: targetPort
     });
@@ -28,14 +28,14 @@ var getNearestPoint = function (mousePoint, points) {
     return index;
 };
 
-var sKeyUpAction = function (canvas, x, y) {
+var sKeyUpAction = function (canvas, x, y, shiftKey, ctrlKey) {
 	canvas.calculateConnectionIntersection();
 
     canvas.mouseDown = false;
 
     var pos = canvas.fromDocumentToCanvasCoordinate(x, y);
     canvas.editPolicy.each(function(i, policy) {
-        policy.onMouseUp(canvas, pos.x, pos.y, false, false);
+        policy.onMouseUp(canvas, pos.x, pos.y, shiftKey, ctrlKey);
     });
 
     canvas.mouseDragDiffX = 0;
@@ -44,7 +44,7 @@ var sKeyUpAction = function (canvas, x, y) {
     return;
 }
 
-var sKeyDownAction = function (canvas, x ,y) {
+var sKeyDownAction = function (canvas, policy, x ,y, shiftKey, ctrlKey) {
 	try{
         var pos = null;
 
@@ -55,9 +55,8 @@ var sKeyDownAction = function (canvas, x ,y) {
             canvas.mouseDragDiffY = 0;
             pos = canvas.fromDocumentToCanvasCoordinate(x, y);
             canvas.mouseDown = true;
-            canvas.editPolicy.each(function(i, policy) {
-                policy.onMouseDown(canvas, pos.x, pos.y, false, false);
-            });
+
+            policy.onMouseDown(canvas, pos.x, pos.y, shiftKey, ctrlKey);
         }
         catch(exc){
             console.log(exc);
@@ -107,7 +106,7 @@ var getSelectedFigure = function (canvas) {
 		console.log('Canvas is NULL!!!!!');
 		return null;
 	}
-	
+
     var selection = canvas.getSelection();
     if (selection == null)
         return null;
@@ -239,4 +238,52 @@ var createCircle = function (canvas, x, y, ports = false) {
     canvas.add( circle, x, y);
 
     return circle;
+}
+
+var labelInplaceEditorCommit = function (labelInplaceEditor, parent) {
+	labelInplaceEditor.commit = function () {
+	    this.html.unbind("blur",this.commitCallback);
+	    $("body").unbind("click",this.commitCallback);
+	    var label = this.html.val();
+	    var cmd =new draw2d.command.CommandAttr(this.label, {text:label});
+	    this.label.getCanvas().getCommandStack().execute(cmd);
+	    this.html.fadeOut($.proxy(function(){
+	        this.html.remove();
+	        this.html = null;
+	        this.listener.onCommit(this.label.getText());
+	    },this));
+
+	    var labelWidth = this.label.getWidth() + 45;
+	    parent.setWidth(labelWidth);
+	};
+}
+
+var getFirstChildText = function (figure) {
+	if (figure == null)
+		return;
+
+	return figure.getChildren().data[0].getText();
+}
+
+var setFirstChildText = function (figure, text) {
+	if (figure == null)
+		return;
+	
+	return figure.getChildren().data[0].setText(text);
+}
+
+var changeFigure = function (canvas) {
+	var selectedRect = getSelectedFigure(canvas);
+
+    if (selectedRect == null) {
+        $('#selectType').modal('hide');
+        return;
+    }
+
+    var type = $('.list-group-item.active').text();
+    var objectData = selectedRect.getUserData();
+    objectData.objectType.type = type;
+    selectedRect.setUserData(objectData);
+
+    return;
 }
